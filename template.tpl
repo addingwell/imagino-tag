@@ -227,7 +227,7 @@ const getCustomData = () => {
     }
 
     if(Object.keys(customUserData).length > 0) {
-        customData.user = customUserData;
+        customData.userOptions = customUserData;
     }
 
     return customData;
