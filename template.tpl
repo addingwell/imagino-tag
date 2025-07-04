@@ -321,8 +321,8 @@ if(!isAuthorizedHost()) {
         body.data = customData;
     }
 
-    if(data.userId || eventData.userId) {
-        body.userId = data.userId || eventData.userId;
+    if(data.userId || eventData.userId  || eventData.user_id) {
+        body.userId = data.userId || eventData.userId  || eventData.user_id;
     }
 
     const url = 'https://tag.imagino.com/' + accountKey + '/events';
