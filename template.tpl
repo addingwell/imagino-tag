@@ -41,19 +41,32 @@ ___TEMPLATE_PARAMETERS___
         ]
       },
       {
+        "type": "TEXT",
+        "name": "customerIdentifier",
+        "displayName": "Customer identifier",
+        "simpleValueType": true,
+        "help": "Your customer identifier provided by Imagino",
+        "alwaysInSummary": true,
+        "valueValidators": [
+          {
+            "type": "NON_EMPTY"
+          }
+        ]
+      },
+      {
         "type": "LABEL",
-        "name": "hostsLabel",
+        "name": "OriginDomainsLabel",
         "displayName": "Provide a list of authorized domains (with the \u0027https://\u0027). By default, all incoming domains are allowed."
       },
       {
         "type": "SIMPLE_TABLE",
-        "name": "hosts",
+        "name": "origins",
         "displayName": "",
         "simpleTableColumns": [
           {
             "defaultValue": "",
-            "displayName": "Authorized host(s)",
-            "name": "host",
+            "displayName": "Authorized origin(s)",
+            "name": "origin",
             "type": "TEXT",
             "valueValidators": [
               {
@@ -196,10 +209,12 @@ const determinateIsLoggingEnabled = () => {
     );
 };
 
-const host = getRequestHeader('origin');
+const origin = getRequestHeader('origin');
+const host = getRequestHeader('host');
 const eventData = getAllEventData();
 const isLoggingEnabled = determinateIsLoggingEnabled();
 const accountKey = data.accountKey;
+const customerIdentifier = data.customerIdentifier;
 
 const generateUuid = function() {
     var result, i, j;
@@ -285,25 +300,25 @@ const getCustomData = () => {
 
 const customData = getCustomData();
 
-const isAuthorizedHost = () => {
-    if(!data.hosts || data.hosts.length === 0) {
+const isAuthorizedOrigin = () => {
+    if(!data.origins || data.origins.length === 0 || !origin) {
       return true;
     }
 
-    let authorizedHost = false;
+    let authorizedOrigin = false;
 
-    for(let i = 0; i < data.hosts.length; i += 1) {
-        if(data.hosts[i].host === host) {
-            authorizedHost = true;
+    for(let i = 0; i < data.origins.length; i += 1) {
+        if(data.hosts[i].origin === origin) {
+            authorizedOrigin = true;
         }
     }
 
-    return authorizedHost;
+    return authorizedOrigin;
 };
 
-if(!isAuthorizedHost()) {
+if(!isAuthorizedOrigin()) {
     if (isLoggingEnabled) {
-        logToConsole("Domain '" + host + "' is not an authorized host. List of authorized hosts : " + JSON.stringify(data.hosts));
+        logToConsole("Domain '" + origin + "' is not an authorized host. List of authorized hosts : " + JSON.stringify(data.hosts));
     }
 
     data.gtmOnFailure();
@@ -325,7 +340,7 @@ if(!isAuthorizedHost()) {
         body.userId = data.userId || eventData.userId;
     }
 
-    const url = 'https://tag.imagino.com/' + accountKey + '/events';
+    const url = 'https://'+ customerIdentifier +'.tag.imagino.com/' + accountKey + '/events';
 
     if (isLoggingEnabled) {
         logToConsole(JSON.stringify({
