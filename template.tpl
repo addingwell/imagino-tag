@@ -85,6 +85,14 @@ ___TEMPLATE_PARAMETERS___
         "valueValidators": [],
         "alwaysInSummary": false,
         "help": ""
+      },
+      {
+        "type": "TEXT",
+        "name": "host",
+        "displayName": "Website host",
+        "simpleValueType": true,
+        "help": "Hostname of the website at the origin of the call, as whitelisted by Imagino (for example www.mydomain.com). Leave empty to derive it from the incoming event (page_hostname, then page_location), the Host header being used as a last resort.",
+        "alwaysInSummary": false
       }
     ]
   },
@@ -175,7 +183,7 @@ ___TEMPLATE_PARAMETERS___
         "name": "userId",
         "displayName": "User id",
         "simpleValueType": true,
-        "help": "By default The GA4 userId is used",
+        "help": "By default, the user_id of the incoming event is used",
         "alwaysInSummary": true
       }
     ]
@@ -196,6 +204,7 @@ const logToConsole = require('logToConsole');
 const getContainerVersion = require('getContainerVersion');
 const JSON = require('JSON');
 const setCookie = require('setCookie');
+const parseUrl = require('parseUrl');
 
 const BROWSER_ID_KEY = '_imo_browser_id';
 const SESSION_ID_KEY = '_imo_session_id';
@@ -210,7 +219,6 @@ const determinateIsLoggingEnabled = () => {
 };
 
 const origin = getRequestHeader('origin');
-const host = getRequestHeader('host');
 const eventData = getAllEventData();
 const isLoggingEnabled = determinateIsLoggingEnabled();
 const accountKey = data.accountKey;
@@ -262,6 +270,30 @@ const isEmptyValue = (value) => {
     return (value == null || (typeof value === "string" && value.trim().length === 0));
 };
 
+// Imagino expects the hostname of the calling website (the one whitelisted with the
+// API key), not the hostname of the server-side container the request landed on.
+const resolveHost = () => {
+    if(!isEmptyValue(data.host)) {
+        return data.host;
+    }
+
+    if(!isEmptyValue(eventData.page_hostname)) {
+        return eventData.page_hostname;
+    }
+
+    if(!isEmptyValue(eventData.page_location)) {
+        const pageLocation = parseUrl(eventData.page_location);
+
+        if(pageLocation && pageLocation.hostname) {
+            return pageLocation.hostname;
+        }
+    }
+
+    return getRequestHeader('host');
+};
+
+const host = resolveHost();
+
 const getCustomData = () => {
     let customEventData = {};
     let customUserData = {};
@@ -308,7 +340,7 @@ const isAuthorizedOrigin = () => {
     let authorizedOrigin = false;
 
     for(let i = 0; i < data.origins.length; i += 1) {
-        if(data.hosts[i].origin === origin) {
+        if(data.origins[i].origin === origin) {
             authorizedOrigin = true;
         }
     }
@@ -318,7 +350,7 @@ const isAuthorizedOrigin = () => {
 
 if(!isAuthorizedOrigin()) {
     if (isLoggingEnabled) {
-        logToConsole("Domain '" + origin + "' is not an authorized host. List of authorized hosts : " + JSON.stringify(data.hosts));
+        logToConsole("Origin '" + origin + "' is not an authorized origin. List of authorized origins : " + JSON.stringify(data.origins));
     }
 
     data.gtmOnFailure();
@@ -336,8 +368,10 @@ if(!isAuthorizedOrigin()) {
         body.data = customData;
     }
 
-    if(data.userId || eventData.userId) {
-        body.userId = data.userId || eventData.userId;
+    const userId = data.userId || eventData.user_id || eventData.userId;
+
+    if(!isEmptyValue(userId)) {
+        body.userId = userId;
     }
 
     const url = 'https://'+ customerIdentifier +'.tag.imagino.com/' + accountKey + '/events';
@@ -376,7 +410,10 @@ if(!isAuthorizedOrigin()) {
             data.gtmOnFailure();
         }
     }, {
-        method: 'POST'
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
     }, JSON.stringify(body));
 }
 
