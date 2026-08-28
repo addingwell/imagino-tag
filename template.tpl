@@ -121,12 +121,7 @@ ___TEMPLATE_PARAMETERS___
         "displayName": "Value associated with the event",
         "simpleValueType": true,
         "alwaysInSummary": true,
-        "help": "For example, the SKU of the product",
-        "valueValidators": [
-          {
-            "type": "NON_EMPTY"
-          }
-        ]
+        "help": "For example, the SKU of the product"
       },
       {
         "type": "GROUP",
@@ -229,7 +224,13 @@ const generateUuid = function() {
     result = '';
     for (j = 0; j < 32; j++) {
         if (j == 8 || j == 12 || j == 16 || j == 20) result = result + '-';
-        i = Math.floor(generateRandom(0, 15)).toString(16).toLowerCase();
+        if (j == 12) {
+            i = '4'; // version
+        } else if (j == 16) {
+            i = Math.floor(generateRandom(8, 11)).toString(16).toLowerCase(); // variant: 8, 9, a or b
+        } else {
+            i = Math.floor(generateRandom(0, 15)).toString(16).toLowerCase();
+        }
         result = result + i;
     }
     return result;
@@ -244,10 +245,10 @@ if (browserId) {
     setCookie(BROWSER_ID_KEY, browserId, {
         domain: 'auto',
         path: '/',
-        samesite: 'Lax',
+        sameSite: 'Lax',
         secure: true,
         'max-age': THIRTEEN_MONTH_IN_SECONDS,
-        HttpOnly: false
+        httpOnly: false
     });
 }
 
@@ -260,9 +261,9 @@ if (sessionId) {
     setCookie(SESSION_ID_KEY, sessionId, {
         domain: 'auto',
         path: '/',
-        samesite: 'Lax',
+        sameSite: 'Lax',
         secure: true,
-        HttpOnly: false
+        httpOnly: false
     });
 }
 
